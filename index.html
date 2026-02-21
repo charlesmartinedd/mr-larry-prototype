@@ -29,9 +29,11 @@
   #panorama.dragging { cursor: grabbing; }
   #panorama img {
     height: 100vh;
+    min-width: 200vw;
     width: auto;
     display: block;
     pointer-events: none;
+    object-fit: cover;
   }
 
   /* ── Hotspots ── */
@@ -809,7 +811,7 @@
 
 <!-- Panorama -->
 <div id="panorama">
-  <img src="https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/urban_street_04.jpg" alt="360 Panorama" crossorigin="anonymous">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/7/7a/Nighttime_panorama_from_63rd_floor_observation_deck_at_70_Pine_Street%2C_New_York%2C_New_York_-_20221123.jpg" alt="NYC Financial District 360 Panorama" crossorigin="anonymous">
 </div>
 
 <!-- HUD -->
@@ -871,22 +873,25 @@
   <div class="panel" id="panel-audio">
     <button class="panel-close" onclick="closePanel()">&times;</button>
     <div class="cat-label gold">Content Display</div>
-    <h2>Audio: The Power of Budgeting</h2>
-    <p>Listen to this brief audio segment about creating and maintaining a personal budget.</p>
+    <h2>Audio: Senate Budget Committee</h2>
+    <p>Listen to Sen. Kent Conrad open a Senate Budget Committee hearing on job growth and the federal budget.</p>
     <div class="audio-player">
-      <div class="audio-title">The 50/30/20 Budget Rule Explained</div>
+      <div class="audio-title">Senate Budget Committee — Job Growth Hearing</div>
       <div class="audio-controls">
-        <button class="audio-play-btn" id="audio-play" onclick="toggleAudio()">&#9654;</button>
+        <button class="audio-play-btn" id="audio-play-btn" onclick="toggleRealAudio()">&#9654;</button>
         <div class="audio-progress-wrap">
-          <div class="audio-progress-bar" id="audio-bar" onclick="seekAudio(event)">
+          <div class="audio-progress-bar" id="audio-bar" onclick="seekRealAudio(event)">
             <div class="audio-progress-fill" id="audio-fill"></div>
           </div>
-          <div class="audio-time"><span id="audio-cur">0:00</span> / <span id="audio-dur">1:30</span></div>
+          <div class="audio-time"><span id="audio-cur">0:00</span> / <span id="audio-dur">0:00</span></div>
         </div>
       </div>
     </div>
+    <audio id="real-audio" preload="metadata"
+      src="https://upload.wikimedia.org/wikipedia/commons/4/45/Sen._Kent_Conrad_Opens_a_Senate_Budget_Committee_Hearing_on_Job_Growth.ogg">
+    </audio>
     <hr class="divider">
-    <p style="font-size:13px; color:#888;">This is a simulated audio player for demonstration. In production, embed real audio files.</p>
+    <p style="font-size:13px; color:#888;">Source: Wikimedia Commons — Public domain (U.S. Government)</p>
     <button class="btn btn-primary" onclick="mark('audio'); closePanel()">Done Listening</button>
   </div>
 
@@ -1302,7 +1307,7 @@
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('video-iframe').src = '';
     document.getElementById('pdf-iframe').src = '';
-    stopAudioSim();
+    if (realAudio && !realAudio.paused) { realAudio.pause(); document.getElementById('audio-play-btn').innerHTML = '&#9654;'; cancelAnimationFrame(audioAnimFrame); }
   }
 
   overlay.addEventListener('click', e => { if (e.target === overlay) closePanel(); });
@@ -1546,48 +1551,56 @@
     renderGallery(next);
   }
 
-  // ── Audio Simulation ──
-  let audioPlaying = false, audioTimer = null, audioProgress = 0;
-  const audioDuration = 90; // 1:30
+  // ── Real Audio Player ──
+  const realAudio = document.getElementById('real-audio');
+  let audioAnimFrame = null;
 
-  function toggleAudio() {
-    if (audioPlaying) {
-      stopAudioSim();
+  function fmtTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  realAudio.addEventListener('loadedmetadata', () => {
+    document.getElementById('audio-dur').textContent = fmtTime(realAudio.duration);
+  });
+
+  function updateAudioUI() {
+    if (realAudio.duration) {
+      const pct = (realAudio.currentTime / realAudio.duration) * 100;
+      document.getElementById('audio-fill').style.width = pct + '%';
+      document.getElementById('audio-cur').textContent = fmtTime(realAudio.currentTime);
+    }
+    if (!realAudio.paused) audioAnimFrame = requestAnimationFrame(updateAudioUI);
+  }
+
+  function toggleRealAudio() {
+    if (realAudio.paused) {
+      realAudio.play();
+      document.getElementById('audio-play-btn').innerHTML = '&#10074;&#10074;';
+      updateAudioUI();
     } else {
-      audioPlaying = true;
-      document.getElementById('audio-play').innerHTML = '&#10074;&#10074;';
-      audioTimer = setInterval(() => {
-        audioProgress += 0.5;
-        if (audioProgress >= audioDuration) {
-          stopAudioSim();
-          audioProgress = audioDuration;
-        }
-        const pct = (audioProgress / audioDuration) * 100;
-        document.getElementById('audio-fill').style.width = pct + '%';
-        const m = Math.floor(audioProgress / 60);
-        const s = Math.floor(audioProgress % 60);
-        document.getElementById('audio-cur').textContent = `${m}:${s.toString().padStart(2, '0')}`;
-      }, 500);
+      realAudio.pause();
+      document.getElementById('audio-play-btn').innerHTML = '&#9654;';
+      cancelAnimationFrame(audioAnimFrame);
     }
   }
 
-  function stopAudioSim() {
-    audioPlaying = false;
-    clearInterval(audioTimer);
-    const btn = document.getElementById('audio-play');
-    if (btn) btn.innerHTML = '&#9654;';
-  }
-
-  function seekAudio(e) {
+  function seekRealAudio(e) {
     const bar = document.getElementById('audio-bar');
     const rect = bar.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    audioProgress = pct * audioDuration;
-    document.getElementById('audio-fill').style.width = (pct * 100) + '%';
-    const m = Math.floor(audioProgress / 60);
-    const s = Math.floor(audioProgress % 60);
-    document.getElementById('audio-cur').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (realAudio.duration) {
+      realAudio.currentTime = pct * realAudio.duration;
+      document.getElementById('audio-fill').style.width = (pct * 100) + '%';
+      document.getElementById('audio-cur').textContent = fmtTime(realAudio.currentTime);
+    }
   }
+
+  realAudio.addEventListener('ended', () => {
+    document.getElementById('audio-play-btn').innerHTML = '&#9654;';
+    cancelAnimationFrame(audioAnimFrame);
+  });
 
   // ── Timeline ──
   (function initTimeline() {
