@@ -35,20 +35,29 @@
   }
 
   /* ── Hotspots ── */
-  .hotspot {
+  .hotspot-wrap {
     position: absolute;
-    width: 36px; height: 36px;
-    border-radius: 50%;
     transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     cursor: pointer;
     z-index: 10;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s;
+  }
+  .hotspot-wrap:hover { transform: translate(-50%, -50%) scale(1.15); }
+  .hotspot {
+    width: 38px; height: 38px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
     font-weight: 700;
     color: #000;
+    position: relative;
+    flex-shrink: 0;
   }
   .hotspot::before {
     content: '';
@@ -58,9 +67,6 @@
     background: inherit;
     animation: pulse 2.4s ease-in-out infinite;
     opacity: 0.4;
-  }
-  .hotspot:hover {
-    transform: translate(-50%, -50%) scale(1.25);
   }
   .hotspot.completed::after {
     content: '\2713';
@@ -74,6 +80,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .hotspot-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+    pointer-events: none;
   }
   @keyframes pulse {
     0%, 100% { transform: scale(1); opacity: 0.4; }
@@ -792,7 +809,7 @@
 
 <!-- Panorama -->
 <div id="panorama">
-  <img src="https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/meadow_2.jpg" alt="360 Panorama" crossorigin="anonymous">
+  <img src="https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/urban_street_04.jpg" alt="360 Panorama" crossorigin="anonymous">
 </div>
 
 <!-- HUD -->
@@ -880,7 +897,7 @@
     <h2>IRS Form W-4</h2>
     <p>Review the W-4 Employee's Withholding Certificate below. Understanding tax withholding is key to managing your paycheck.</p>
     <div style="border-radius:12px; overflow:hidden; margin-bottom:20px; background:rgba(255,255,255,0.04); min-height:300px; display:flex; align-items:center; justify-content:center;">
-      <iframe id="pdf-iframe" src="" style="width:100%; height:400px; border:none; border-radius:12px;" title="IRS W-4 Form"></iframe>
+      <iframe id="pdf-iframe" src="" style="width:100%; height:450px; border:none; border-radius:12px;" title="IRS W-4 Form"></iframe>
     </div>
     <p style="font-size:13px; color:#888;">PDF may not render in all browsers. <a href="https://www.irs.gov/pub/irs-pdf/fw4.pdf" target="_blank" style="color:#ffcc00;">Open in new tab &rarr;</a></p>
     <button class="btn btn-primary" onclick="mark('pdf'); closePanel()">Done Reviewing</button>
@@ -1186,24 +1203,24 @@
   const completed = new Set();
   const TOTAL = 16;
 
-  // ── Hotspot positions ──
+  // ── Hotspot positions (3 rows: 0.22, 0.42, 0.62) ──
   const hotspots = [
-    { id: 'info',        x: 0.04, y: 0.25, cat: 'content', n: 1 },
-    { id: 'gallery',     x: 0.16, y: 0.45, cat: 'content', n: 2 },
-    { id: 'video',       x: 0.17, y: 0.25, cat: 'content', n: 3 },
-    { id: 'audio',       x: 0.29, y: 0.45, cat: 'content', n: 4 },
-    { id: 'pdf',         x: 0.30, y: 0.25, cat: 'content', n: 5 },
-    { id: 'mcq',         x: 0.42, y: 0.45, cat: 'assess',  n: 6 },
-    { id: 'multiselect', x: 0.43, y: 0.25, cat: 'assess',  n: 7 },
-    { id: 'truefalse',   x: 0.55, y: 0.45, cat: 'assess',  n: 8 },
-    { id: 'dragdrop',    x: 0.56, y: 0.25, cat: 'assess',  n: 9 },
-    { id: 'fillin',      x: 0.68, y: 0.45, cat: 'assess',  n: 10 },
-    { id: 'likert',      x: 0.69, y: 0.25, cat: 'assess',  n: 11 },
-    { id: 'calc',        x: 0.78, y: 0.45, cat: 'tools',   n: 12 },
-    { id: 'timeline',    x: 0.79, y: 0.25, cat: 'tools',   n: 13 },
-    { id: 'flashcard',   x: 0.88, y: 0.45, cat: 'tools',   n: 14 },
-    { id: 'scenario',    x: 0.89, y: 0.25, cat: 'game',    n: 15 },
-    { id: 'timed',       x: 0.96, y: 0.45, cat: 'game',    n: 16 },
+    { id: 'info',        x: 0.04, y: 0.22, cat: 'content', n: 1,  label: 'Info Panel' },
+    { id: 'gallery',     x: 0.11, y: 0.48, cat: 'content', n: 2,  label: 'Gallery' },
+    { id: 'video',       x: 0.18, y: 0.26, cat: 'content', n: 3,  label: 'Video' },
+    { id: 'audio',       x: 0.25, y: 0.52, cat: 'content', n: 4,  label: 'Audio' },
+    { id: 'pdf',         x: 0.32, y: 0.22, cat: 'content', n: 5,  label: 'PDF Viewer' },
+    { id: 'mcq',         x: 0.39, y: 0.50, cat: 'assess',  n: 6,  label: 'Multiple Choice' },
+    { id: 'multiselect', x: 0.46, y: 0.24, cat: 'assess',  n: 7,  label: 'Multi-Select' },
+    { id: 'truefalse',   x: 0.53, y: 0.52, cat: 'assess',  n: 8,  label: 'True / False' },
+    { id: 'dragdrop',    x: 0.60, y: 0.22, cat: 'assess',  n: 9,  label: 'Drag & Drop' },
+    { id: 'fillin',      x: 0.67, y: 0.50, cat: 'assess',  n: 10, label: 'Fill in Blank' },
+    { id: 'likert',      x: 0.74, y: 0.24, cat: 'assess',  n: 11, label: 'Likert Survey' },
+    { id: 'calc',        x: 0.80, y: 0.52, cat: 'tools',   n: 12, label: 'Calculator' },
+    { id: 'timeline',    x: 0.85, y: 0.22, cat: 'tools',   n: 13, label: 'Timeline' },
+    { id: 'flashcard',   x: 0.90, y: 0.50, cat: 'tools',   n: 14, label: 'Flashcards' },
+    { id: 'scenario',    x: 0.94, y: 0.24, cat: 'game',    n: 15, label: 'Scenario' },
+    { id: 'timed',       x: 0.97, y: 0.52, cat: 'game',    n: 16, label: 'Timed Quiz' },
   ];
 
   const catClass = { content: 'cat-content', assess: 'cat-assess', tools: 'cat-tools', game: 'cat-game' };
@@ -1211,14 +1228,24 @@
   // ── Create hotspots ──
   const pano = document.getElementById('panorama');
   hotspots.forEach(h => {
+    const wrap = document.createElement('div');
+    wrap.className = 'hotspot-wrap';
+    wrap.style.left = `${h.x * 100}%`;
+    wrap.style.top = `${h.y * 100}%`;
+    wrap.addEventListener('click', e => { e.stopPropagation(); openPanel(h.id); });
+
     const dot = document.createElement('div');
     dot.className = `hotspot ${catClass[h.cat]}`;
     dot.id = `hs-${h.id}`;
     dot.textContent = h.n;
-    dot.style.left = `${h.x * 100}%`;
-    dot.style.top = `${h.y * 100}%`;
-    dot.addEventListener('click', e => { e.stopPropagation(); openPanel(h.id); });
-    pano.appendChild(dot);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'hotspot-label';
+    lbl.textContent = h.label;
+
+    wrap.appendChild(dot);
+    wrap.appendChild(lbl);
+    pano.appendChild(wrap);
   });
 
   // ── Drag to pan ──
@@ -1264,7 +1291,7 @@
       panel.classList.add('active');
       overlay.classList.add('active');
       if (id === 'video') document.getElementById('video-iframe').src = 'https://www.youtube.com/embed/p7HKvqRI_Bo';
-      if (id === 'pdf') document.getElementById('pdf-iframe').src = 'https://www.irs.gov/pub/irs-pdf/fw4.pdf';
+      if (id === 'pdf') document.getElementById('pdf-iframe').src = 'https://docs.google.com/gview?url=https://www.irs.gov/pub/irs-pdf/fw4.pdf&embedded=true';
       if (id === 'gallery') renderGallery(0);
       if (id === 'calc') calculate();
     }
