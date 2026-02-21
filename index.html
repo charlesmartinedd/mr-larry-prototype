@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mr. Larry's Financial Literacy — 360° Interactive eLearning</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* ── Panorama ── */
+  #panorama {
+    position: absolute;
+    top: 0; left: 0;
+    height: 100vh;
+    cursor: grab;
+    will-change: transform;
+    transition: none;
+  }
+  #panorama.dragging { cursor: grabbing; }
+  #panorama img {
+    height: 100vh;
+    width: auto;
+    display: block;
+    pointer-events: none;
+  }
+
+  /* ── Hotspots ── */
+  .hotspot {
+    position: absolute;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #000;
+  }
+  .hotspot::before {
+    content: '';
+    position: absolute;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    animation: pulse 2.4s ease-in-out infinite;
+    opacity: 0.4;
+  }
+  .hotspot:hover {
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+  .hotspot.completed::after {
+    content: '\2713';
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 18px; height: 18px;
+    background: #22c55e;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.8); opacity: 0; }
+  }
+
+  /* Category colors */
+  .cat-content { background: #ffcc00; }
+  .cat-assess  { background: #ff6b6b; }
+  .cat-tools   { background: #00d4aa; }
+  .cat-game    { background: #a855f7; color: #fff; }
+
+  /* ── Overlay ── */
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.25s ease;
+  }
+  #overlay.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── Panel ── */
+  .panel {
+    display: none;
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    width: 92vw;
+    max-width: 580px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 40px;
+    position: relative;
+    animation: slideUp 0.3s ease;
+  }
+  .panel.active { display: block; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .panel::-webkit-scrollbar { width: 6px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+  .panel-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    border-radius: 50%;
+    color: #aaa;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .panel-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+  .cat-label {
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+  .cat-label.gold   { color: #ffcc00; }
+  .cat-label.coral  { color: #ff6b6b; }
+  .cat-label.teal   { color: #00d4aa; }
+  .cat-label.purple { color: #a855f7; }
+
+  .panel h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 20px;
+    line-height: 1.3;
+  }
+  .panel p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #b0b0b0;
+    margin-bottom: 20px;
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 24px 0;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 28px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: #2997ff;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #0a84ff; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: #ccc;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.14); }
+  .btn-success {
+    background: #22c55e;
+    color: #fff;
+  }
+  .btn-success:hover { background: #16a34a; }
+
+  /* ── Callout ── */
+  .callout {
+    background: rgba(255,204,0,0.08);
+    border-left: 3px solid #ffcc00;
+    padding: 16px 20px;
+    border-radius: 0 10px 10px 0;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #d0d0d0;
+  }
+  .callout strong { color: #ffcc00; }
+
+  /* ── MCQ / Assessment ── */
+  .option-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 14px 20px;
+    margin-bottom: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #d0d0d0;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .option-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  .option-btn.correct { background: rgba(34,197,94,0.15); border-color: #22c55e; color: #4ade80; }
+  .option-btn.wrong   { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #f87171; }
+  .option-btn.disabled { pointer-events: none; opacity: 0.7; }
+
+  .feedback {
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin-top: 16px;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(34,197,94,0.1); color: #4ade80; }
+  .feedback.wrong   { background: rgba(239,68,68,0.1); color: #f87171; }
+
+  /* ── Checkbox list ── */
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 14px;
+    color: #c0c0c0;
+  }
+  .check-item:hover { background: rgba(255,255,255,0.08); }
+  .check-item input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: #ff6b6b;
+    cursor: pointer;
+  }
+
+  /* ── True/False ── */
+  .tf-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    gap: 12px;
+  }
+  .tf-row:last-child { border-bottom: none; }
+  .tf-statement { flex: 1; font-size: 14px; color: #c0c0c0; line-height: 1.5; }
+  .tf-btns { display: flex; gap: 8px; flex-shrink: 0; }
+  .tf-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #aaa;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 60px;
+    text-align: center;
+  }
+  .tf-btn:hover { background: rgba(255,255,255,0.1); }
+  .tf-btn.selected { border-color: #2997ff; color: #2997ff; background: rgba(41,151,255,0.1); }
+  .tf-btn.correct-answer  { border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.12); }
+  .tf-btn.wrong-answer    { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.12); }
+
+  /* ── Drag & Drop ── */
+  .dd-container { display: flex; flex-direction: column; gap: 24px; }
+  .dd-terms { display: flex; flex-wrap: wrap; gap: 10px; min-height: 50px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; }
+  .dd-term {
+    padding: 10px 18px;
+    background: rgba(255,107,107,0.15);
+    border: 1px solid rgba(255,107,107,0.3);
+    border-radius: 8px;
+    color: #ff9b9b;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: grab;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .dd-term:active { cursor: grabbing; opacity: 0.7; }
+  .dd-term.placed { opacity: 0.3; pointer-events: none; }
+  .dd-def {
+    padding: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 2px dashed rgba(255,255,255,0.1);
+    border-radius: 10px;
+    min-height: 60px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .dd-def.over { border-color: #ff6b6b; background: rgba(255,107,107,0.06); }
+  .dd-def-label { font-size: 13px; color: #888; margin-bottom: 8px; }
+  .dd-def .dd-term { cursor: pointer; }
+  .dd-def.correct-drop { border-color: #22c55e; border-style: solid; }
+  .dd-def.wrong-drop   { border-color: #ef4444; border-style: solid; }
+
+  /* ── Fill in the Blank ── */
+  .formula-display {
+    font-size: 20px;
+    color: #fff;
+    text-align: center;
+    padding: 28px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    line-height: 2;
+  }
+  .blank-input {
+    width: 80px;
+    padding: 6px 12px;
+    background: rgba(255,107,107,0.1);
+    border: 1px solid rgba(255,107,107,0.4);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .blank-input:focus { border-color: #ff6b6b; }
+  .blank-input.correct-input { border-color: #22c55e; background: rgba(34,197,94,0.1); }
+  .blank-input.wrong-input   { border-color: #ef4444; background: rgba(239,68,68,0.1); }
+
+  /* ── Likert ── */
+  .likert-q {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .likert-q:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .likert-text { font-size: 14px; color: #c0c0c0; margin-bottom: 12px; line-height: 1.5; }
+  .star-row { display: flex; gap: 6px; }
+  .star {
+    font-size: 24px;
+    color: rgba(255,255,255,0.15);
+    cursor: pointer;
+    transition: color 0.15s, transform 0.15s;
+  }
+  .star:hover { transform: scale(1.2); }
+  .star.filled { color: #ffcc00; }
+
+  /* ── Calculator ── */
+  .calc-field {
+    margin-bottom: 20px;
+  }
+  .calc-field label {
+    display: block;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .calc-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .calc-input:focus { border-color: #00d4aa; }
+  .calc-result {
+    background: rgba(0,212,170,0.08);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-top: 20px;
+  }
+  .calc-result .amount {
+    font-size: 32px;
+    font-weight: 700;
+    color: #00d4aa;
+  }
+  .calc-result .label {
+    font-size: 13px;
+    color: #888;
+    margin-top: 6px;
+  }
+
+  /* ── Timeline ── */
+  .timeline-track {
+    overflow-x: auto;
+    padding: 20px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .timeline-inner {
+    display: flex;
+    gap: 0;
+    min-width: max-content;
+    position: relative;
+    padding: 40px 20px 20px;
+  }
+  .timeline-inner::before {
+    content: '';
+    position: absolute;
+    top: 50px;
+    left: 20px; right: 20px;
+    height: 2px;
+    background: rgba(0,212,170,0.2);
+  }
+  .tl-node {
+    width: 160px;
+    flex-shrink: 0;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+  }
+  .tl-dot {
+    width: 14px; height: 14px;
+    background: #00d4aa;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.2s;
+  }
+  .tl-node:hover .tl-dot { transform: scale(1.4); }
+  .tl-year {
+    font-size: 14px;
+    font-weight: 700;
+    color: #00d4aa;
+    margin-bottom: 6px;
+  }
+  .tl-desc {
+    font-size: 12px;
+    color: #999;
+    line-height: 1.5;
+    padding: 0 8px;
+  }
+
+  /* ── Flashcards ── */
+  .flashcard-container {
+    perspective: 1000px;
+    margin-bottom: 24px;
+  }
+  .flashcard {
+    width: 100%;
+    height: 220px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease;
+    cursor: pointer;
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .fc-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    text-align: center;
+  }
+  .fc-front {
+    background: linear-gradient(135deg, rgba(0,212,170,0.12), rgba(0,212,170,0.04));
+    border: 1px solid rgba(0,212,170,0.2);
+  }
+  .fc-back {
+    background: linear-gradient(135deg, rgba(41,151,255,0.12), rgba(41,151,255,0.04));
+    border: 1px solid rgba(41,151,255,0.2);
+    transform: rotateY(180deg);
+  }
+  .fc-front .fc-word {
+    font-size: 24px;
+    font-weight: 700;
+    color: #00d4aa;
+  }
+  .fc-back .fc-def {
+    font-size: 15px;
+    color: #c0c0c0;
+    line-height: 1.6;
+  }
+  .fc-hint { font-size: 12px; color: #666; margin-top: 12px; }
+  .fc-nav { display: flex; justify-content: center; gap: 12px; align-items: center; }
+  .fc-counter { font-size: 14px; color: #888; min-width: 60px; text-align: center; }
+
+  /* ── Scenario ── */
+  .scenario-card {
+    background: rgba(168,85,247,0.08);
+    border: 1px solid rgba(168,85,247,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    color: #c0c0c0;
+    line-height: 1.6;
+  }
+  .scenario-card:hover {
+    background: rgba(168,85,247,0.14);
+    border-color: rgba(168,85,247,0.35);
+    transform: translateY(-2px);
+  }
+  .scenario-card .choice-label {
+    font-weight: 700;
+    color: #a855f7;
+    margin-bottom: 6px;
+    display: block;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .scenario-outcome {
+    background: rgba(168,85,247,0.06);
+    border-radius: 12px;
+    padding: 24px;
+    display: none;
+  }
+  .scenario-outcome.show { display: block; }
+  .scenario-outcome h3 {
+    color: #a855f7;
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .scenario-outcome p {
+    color: #b0b0b0;
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 0;
+  }
+
+  /* ── Timed Challenge ── */
+  .timer-display {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .timer-circle {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    border: 4px solid rgba(168,85,247,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    font-size: 36px;
+    font-weight: 700;
+    color: #a855f7;
+    position: relative;
+  }
+  .timer-circle.urgent { color: #ef4444; border-color: rgba(239,68,68,0.3); animation: timerPulse 0.5s infinite; }
+  @keyframes timerPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .timer-score { font-size: 14px; color: #888; margin-top: 12px; }
+  .timed-q {
+    font-size: 16px;
+    color: #e0e0e0;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    min-height: 48px;
+  }
+  .timed-options { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── Gallery ── */
+  .gallery-frame {
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gallery-chart {
+    width: 100%;
+    max-width: 400px;
+  }
+  .gallery-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+  .gallery-dots {
+    display: flex;
+    gap: 8px;
+  }
+  .gallery-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.2s;
+  }
+  .gallery-dot.active { background: #ffcc00; }
+  .gallery-arrow {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: #ccc;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .gallery-arrow:hover { background: rgba(255,255,255,0.15); }
+
+  /* ── Audio Player ── */
+  .audio-player {
+    background: rgba(255,204,0,0.06);
+    border: 1px solid rgba(255,204,0,0.15);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .audio-title { font-size: 15px; color: #e0e0e0; font-weight: 600; margin-bottom: 16px; }
+  .audio-controls { display: flex; align-items: center; gap: 16px; }
+  .audio-play-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #ffcc00;
+    border: none;
+    color: #000;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+  }
+  .audio-play-btn:hover { transform: scale(1.08); }
+  .audio-progress-wrap { flex: 1; }
+  .audio-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .audio-progress-fill {
+    height: 100%;
+    background: #ffcc00;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+  .audio-time { font-size: 12px; color: #888; margin-top: 6px; }
+
+  /* ── Progress HUD ── */
+  #hud {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,20,35,0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 50;
+    min-width: 340px;
+  }
+  #hud-label {
+    font-size: 13px;
+    color: #888;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  #hud-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #hud-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2997ff, #00d4aa);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+  #hud-count {
+    font-size: 14px;
+    color: #fff;
+    font-weight: 700;
+    min-width: 46px;
+    text-align: right;
+  }
+
+  /* ── Legend ── */
+  #legend {
+    position: fixed;
+    top: 20px; left: 20px;
+    background: rgba(20,20,35,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 20px;
+    z-index: 50;
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #999;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ── Title ── */
+  #title-bar {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(20,20,35,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 24px;
+    z-index: 50;
+  }
+  #title-bar h1 {
+    font-size: 15px;
+    color: #fff;
+    font-weight: 700;
+  }
+  #title-bar span {
+    font-size: 11px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+
+<!-- Legend -->
+<div id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#ffcc00"></div> Content</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div> Assessment</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00d4aa"></div> Tools</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> Gamification</div>
+</div>
+
+<!-- Title -->
+<div id="title-bar">
+  <h1>Mr. Larry's Financial Literacy</h1>
+  <span>360&deg; Interactive eLearning Prototype</span>
+</div>
+
+<!-- Panorama -->
+<div id="panorama">
+  <img src="https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/meadow_2.jpg" alt="360 Panorama" crossorigin="anonymous">
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <span id="hud-label">Progress</span>
+  <div id="hud-bar"><div id="hud-fill"></div></div>
+  <span id="hud-count">0 / 16</span>
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+
+  <!-- 1. Info Panel -->
+  <div class="panel" id="panel-info">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label gold">Content Display</div>
+    <h2>Emergency Fund 101</h2>
+    <p>An emergency fund is your financial safety net — money set aside for life's unexpected events. Here's what you need to know:</p>
+    <div class="callout"><strong>Rule of Thumb:</strong> Save 3-6 months of essential living expenses in a high-yield savings account.</div>
+    <div class="callout"><strong>Start Small:</strong> Even $500 can cover minor emergencies like a car repair or medical co-pay.</div>
+    <div class="callout"><strong>Keep It Liquid:</strong> Your emergency fund should be easily accessible — not locked in investments or CDs.</div>
+    <hr class="divider">
+    <p>58% of Americans have less than $1,000 in savings. Building an emergency fund is the #1 first step in any financial plan.</p>
+    <button class="btn btn-primary" onclick="mark('info'); closePanel()">Got It</button>
+  </div>
+
+  <!-- 2. Gallery -->
+  <div class="panel" id="panel-gallery">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label gold">Content Display</div>
+    <h2>Financial Statements</h2>
+    <p>Understanding your personal financial statements is essential. Browse through these key documents:</p>
+    <div class="gallery-frame" id="gallery-frame">
+      <svg class="gallery-chart" id="gallery-svg" viewBox="0 0 400 200"></svg>
+    </div>
+    <div id="gallery-caption" style="text-align:center; font-size:13px; color:#999; margin-bottom:16px;"></div>
+    <div class="gallery-nav">
+      <button class="gallery-arrow" onclick="galleryNav(-1)">&#8592;</button>
+      <div class="gallery-dots" id="gallery-dots"></div>
+      <button class="gallery-arrow" onclick="galleryNav(1)">&#8594;</button>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" onclick="mark('gallery'); closePanel()">Done Reviewing</button>
+  </div>
+
+  <!-- 3. Video -->
+  <div class="panel" id="panel-video">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label gold">Content Display</div>
+    <h2>How the Stock Market Works</h2>
+    <p>Watch this TED-Ed explainer to understand the basics of stock markets and investing.</p>
+    <div style="position:relative; padding-bottom:56.25%; border-radius:12px; overflow:hidden; background:#000; margin-bottom:20px;">
+      <iframe id="video-iframe" style="position:absolute; inset:0; width:100%; height:100%; border:none;" src="" allow="accelerometer; autoplay; encrypted-media; gyroscope" allowfullscreen></iframe>
+    </div>
+    <button class="btn btn-primary" onclick="mark('video'); closePanel()">Finished Watching</button>
+  </div>
+
+  <!-- 4. Audio -->
+  <div class="panel" id="panel-audio">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label gold">Content Display</div>
+    <h2>Audio: The Power of Budgeting</h2>
+    <p>Listen to this brief audio segment about creating and maintaining a personal budget.</p>
+    <div class="audio-player">
+      <div class="audio-title">The 50/30/20 Budget Rule Explained</div>
+      <div class="audio-controls">
+        <button class="audio-play-btn" id="audio-play" onclick="toggleAudio()">&#9654;</button>
+        <div class="audio-progress-wrap">
+          <div class="audio-progress-bar" id="audio-bar" onclick="seekAudio(event)">
+            <div class="audio-progress-fill" id="audio-fill"></div>
+          </div>
+          <div class="audio-time"><span id="audio-cur">0:00</span> / <span id="audio-dur">1:30</span></div>
+        </div>
+      </div>
+    </div>
+    <hr class="divider">
+    <p style="font-size:13px; color:#888;">This is a simulated audio player for demonstration. In production, embed real audio files.</p>
+    <button class="btn btn-primary" onclick="mark('audio'); closePanel()">Done Listening</button>
+  </div>
+
+  <!-- 5. PDF -->
+  <div class="panel" id="panel-pdf">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label gold">Content Display</div>
+    <h2>IRS Form W-4</h2>
+    <p>Review the W-4 Employee's Withholding Certificate below. Understanding tax withholding is key to managing your paycheck.</p>
+    <div style="border-radius:12px; overflow:hidden; margin-bottom:20px; background:rgba(255,255,255,0.04); min-height:300px; display:flex; align-items:center; justify-content:center;">
+      <iframe id="pdf-iframe" src="" style="width:100%; height:400px; border:none; border-radius:12px;" title="IRS W-4 Form"></iframe>
+    </div>
+    <p style="font-size:13px; color:#888;">PDF may not render in all browsers. <a href="https://www.irs.gov/pub/irs-pdf/fw4.pdf" target="_blank" style="color:#ffcc00;">Open in new tab &rarr;</a></p>
+    <button class="btn btn-primary" onclick="mark('pdf'); closePanel()">Done Reviewing</button>
+  </div>
+
+  <!-- 6. MCQ -->
+  <div class="panel" id="panel-mcq">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label coral">Assessment</div>
+    <h2>Credit Score Factors</h2>
+    <p>Which factor has the <strong>greatest impact</strong> on your FICO credit score?</p>
+    <div id="mcq-options">
+      <button class="option-btn" onclick="checkMCQ(this, false)">Length of credit history</button>
+      <button class="option-btn" onclick="checkMCQ(this, true)">Payment history (35%)</button>
+      <button class="option-btn" onclick="checkMCQ(this, false)">Credit utilization (30%)</button>
+      <button class="option-btn" onclick="checkMCQ(this, false)">Types of credit (10%)</button>
+    </div>
+    <div class="feedback correct" id="mcq-correct">Correct! Payment history makes up 35% of your FICO score — the single largest factor.</div>
+    <div class="feedback wrong" id="mcq-wrong">Not quite. Payment history (35%) is the #1 factor, followed by credit utilization at 30%.</div>
+  </div>
+
+  <!-- 7. Multiple Select -->
+  <div class="panel" id="panel-multiselect">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label coral">Assessment</div>
+    <h2>Common Tax Deductions</h2>
+    <p>Select <strong>all items</strong> that are typically tax-deductible for individuals:</p>
+    <div id="ms-items">
+      <label class="check-item"><input type="checkbox" value="1" data-correct="true"> Mortgage interest</label>
+      <label class="check-item"><input type="checkbox" value="2" data-correct="true"> Charitable donations</label>
+      <label class="check-item"><input type="checkbox" value="3" data-correct="false"> Groceries</label>
+      <label class="check-item"><input type="checkbox" value="4" data-correct="true"> Student loan interest</label>
+      <label class="check-item"><input type="checkbox" value="5" data-correct="false"> Entertainment subscriptions</label>
+      <label class="check-item"><input type="checkbox" value="6" data-correct="true"> Medical expenses (above 7.5% AGI)</label>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" id="ms-submit" onclick="checkMultiSelect()">Submit Answers</button>
+    <div class="feedback correct" id="ms-correct">Correct! Mortgage interest, charitable donations, student loan interest, and qualified medical expenses are all deductible.</div>
+    <div class="feedback wrong" id="ms-wrong">Not quite. Groceries and entertainment subscriptions are not tax-deductible. The deductible items are: mortgage interest, charitable donations, student loan interest, and medical expenses above 7.5% AGI.</div>
+  </div>
+
+  <!-- 8. True/False -->
+  <div class="panel" id="panel-truefalse">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label coral">Assessment</div>
+    <h2>Financial Myths: True or False?</h2>
+    <p>Evaluate each statement and select True or False:</p>
+    <div id="tf-items">
+      <div class="tf-row" data-answer="false">
+        <div class="tf-statement">You need to carry a credit card balance to build credit.</div>
+        <div class="tf-btns">
+          <button class="tf-btn" onclick="selectTF(this, 'true')">True</button>
+          <button class="tf-btn" onclick="selectTF(this, 'false')">False</button>
+        </div>
+      </div>
+      <div class="tf-row" data-answer="true">
+        <div class="tf-statement">Your employer's 401(k) match is essentially free money.</div>
+        <div class="tf-btns">
+          <button class="tf-btn" onclick="selectTF(this, 'true')">True</button>
+          <button class="tf-btn" onclick="selectTF(this, 'false')">False</button>
+        </div>
+      </div>
+      <div class="tf-row" data-answer="false">
+        <div class="tf-statement">Checking your own credit score lowers it.</div>
+        <div class="tf-btns">
+          <button class="tf-btn" onclick="selectTF(this, 'true')">True</button>
+          <button class="tf-btn" onclick="selectTF(this, 'false')">False</button>
+        </div>
+      </div>
+      <div class="tf-row" data-answer="true">
+        <div class="tf-statement">Index funds typically outperform actively managed funds over time.</div>
+        <div class="tf-btns">
+          <button class="tf-btn" onclick="selectTF(this, 'true')">True</button>
+          <button class="tf-btn" onclick="selectTF(this, 'false')">False</button>
+        </div>
+      </div>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" id="tf-submit" onclick="checkTF()">Check Answers</button>
+    <div class="feedback" id="tf-feedback"></div>
+  </div>
+
+  <!-- 9. Drag & Drop -->
+  <div class="panel" id="panel-dragdrop">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label coral">Assessment</div>
+    <h2>Match the Terms</h2>
+    <p>Drag each financial term to its correct definition:</p>
+    <div class="dd-container">
+      <div class="dd-terms" id="dd-bank">
+        <div class="dd-term" draggable="true" data-term="apr">APR</div>
+        <div class="dd-term" draggable="true" data-term="roi">ROI</div>
+        <div class="dd-term" draggable="true" data-term="etf">ETF</div>
+        <div class="dd-term" draggable="true" data-term="fico">FICO</div>
+      </div>
+      <div class="dd-def" data-accept="apr">
+        <div class="dd-def-label">Annual percentage rate charged on borrowed money</div>
+      </div>
+      <div class="dd-def" data-accept="roi">
+        <div class="dd-def-label">Measure of profitability relative to investment cost</div>
+      </div>
+      <div class="dd-def" data-accept="etf">
+        <div class="dd-def-label">A basket of securities traded on an exchange like a stock</div>
+      </div>
+      <div class="dd-def" data-accept="fico">
+        <div class="dd-def-label">Credit scoring model used by 90% of top lenders</div>
+      </div>
+    </div>
+    <hr class="divider">
+    <div class="feedback" id="dd-feedback"></div>
+  </div>
+
+  <!-- 10. Fill in the Blank -->
+  <div class="panel" id="panel-fillin">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label coral">Assessment</div>
+    <h2>Compound Interest Formula</h2>
+    <p>Fill in the missing variables in the compound interest formula:</p>
+    <div class="formula-display">
+      A = <input class="blank-input" id="fi-1" placeholder="?" data-answer="P"> &times; (1 + <input class="blank-input" id="fi-2" placeholder="?" data-answer="r"> / <input class="blank-input" id="fi-3" placeholder="?" data-answer="n">)<sup>n&times;t</sup>
+    </div>
+    <p style="font-size:13px; color:#888; margin-bottom:20px;">Hint: P = Principal, r = annual rate, n = compounding periods per year, t = time in years, A = final Amount</p>
+    <button class="btn btn-primary" onclick="checkFillIn()">Check Answers</button>
+    <div class="feedback" id="fi-feedback"></div>
+  </div>
+
+  <!-- 11. Likert -->
+  <div class="panel" id="panel-likert">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label coral">Assessment</div>
+    <h2>Financial Confidence Survey</h2>
+    <p>Rate your confidence level for each area (1 = Not confident, 5 = Very confident):</p>
+    <div id="likert-questions">
+      <div class="likert-q" data-q="1">
+        <div class="likert-text">I can create and follow a monthly budget.</div>
+        <div class="star-row"></div>
+      </div>
+      <div class="likert-q" data-q="2">
+        <div class="likert-text">I understand how compound interest works.</div>
+        <div class="star-row"></div>
+      </div>
+      <div class="likert-q" data-q="3">
+        <div class="likert-text">I know how to read my credit report.</div>
+        <div class="star-row"></div>
+      </div>
+      <div class="likert-q" data-q="4">
+        <div class="likert-text">I feel comfortable making investment decisions.</div>
+        <div class="star-row"></div>
+      </div>
+      <div class="likert-q" data-q="5">
+        <div class="likert-text">I can explain the difference between a Roth and Traditional IRA.</div>
+        <div class="star-row"></div>
+      </div>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" id="likert-submit" onclick="submitLikert()">Submit Survey</button>
+    <div class="feedback" id="likert-feedback"></div>
+  </div>
+
+  <!-- 12. Calculator -->
+  <div class="panel" id="panel-calc">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label teal">Interactive Tool</div>
+    <h2>Compound Interest Calculator</h2>
+    <p>See how your money grows over time with the power of compounding.</p>
+    <div class="calc-field">
+      <label>Initial Investment ($)</label>
+      <input class="calc-input" type="number" id="calc-principal" value="1000" oninput="calculate()">
+    </div>
+    <div class="calc-field">
+      <label>Annual Interest Rate (%)</label>
+      <input class="calc-input" type="number" id="calc-rate" value="7" step="0.1" oninput="calculate()">
+    </div>
+    <div class="calc-field">
+      <label>Years</label>
+      <input class="calc-input" type="number" id="calc-years" value="10" oninput="calculate()">
+    </div>
+    <div class="calc-field">
+      <label>Compounds Per Year</label>
+      <input class="calc-input" type="number" id="calc-n" value="12" oninput="calculate()">
+    </div>
+    <div class="calc-result">
+      <div class="amount" id="calc-amount">$1,000.00</div>
+      <div class="label">Future Value</div>
+      <div class="label" id="calc-interest" style="margin-top:8px; color:#00d4aa;">Interest earned: $0.00</div>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" onclick="mark('calc'); closePanel()">Done Exploring</button>
+  </div>
+
+  <!-- 13. Timeline -->
+  <div class="panel" id="panel-timeline">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label teal">Interactive Tool</div>
+    <h2>History of U.S. Currency</h2>
+    <p>Scroll through key milestones in American monetary history:</p>
+    <div class="timeline-track">
+      <div class="timeline-inner" id="timeline-inner"></div>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" onclick="mark('timeline'); closePanel()">Done Exploring</button>
+  </div>
+
+  <!-- 14. Flashcards -->
+  <div class="panel" id="panel-flashcard">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label teal">Interactive Tool</div>
+    <h2>Finance Vocabulary</h2>
+    <p>Click the card to flip it. Use arrows to navigate the deck.</p>
+    <div class="flashcard-container">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="fc-face fc-front">
+          <div class="fc-word" id="fc-word"></div>
+          <div class="fc-hint">Tap to reveal definition</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-def" id="fc-def"></div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="btn btn-secondary" onclick="fcNav(-1)">&#8592; Prev</button>
+      <span class="fc-counter" id="fc-counter">1 / 6</span>
+      <button class="btn btn-secondary" onclick="fcNav(1)">Next &#8594;</button>
+    </div>
+    <hr class="divider">
+    <button class="btn btn-primary" onclick="mark('flashcard'); closePanel()">Done Studying</button>
+  </div>
+
+  <!-- 15. Scenario -->
+  <div class="panel" id="panel-scenario">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label purple">Gamification</div>
+    <h2>You Got a $5,000 Bonus!</h2>
+    <p>Your employer just gave you an unexpected $5,000 bonus. What will you do with it?</p>
+    <div id="scenario-choices">
+      <div class="scenario-card" onclick="chooseScenario('save')">
+        <span class="choice-label">Option A</span>
+        Put it all into your emergency fund / high-yield savings account.
+      </div>
+      <div class="scenario-card" onclick="chooseScenario('invest')">
+        <span class="choice-label">Option B</span>
+        Invest it in a diversified index fund for long-term growth.
+      </div>
+      <div class="scenario-card" onclick="chooseScenario('debt')">
+        <span class="choice-label">Option C</span>
+        Pay off your highest-interest credit card debt.
+      </div>
+      <div class="scenario-card" onclick="chooseScenario('spend')">
+        <span class="choice-label">Option D</span>
+        Treat yourself — you've earned a vacation!
+      </div>
+    </div>
+    <div class="scenario-outcome" id="outcome-save">
+      <h3>Smart Move: Emergency Fund</h3>
+      <p>Excellent choice! After 1 year in a high-yield savings account at 5% APY, your $5,000 becomes $5,250. More importantly, you now have a safety net for unexpected expenses. Financial advisors recommend building 3-6 months of expenses before investing.</p>
+    </div>
+    <div class="scenario-outcome" id="outcome-invest">
+      <h3>Playing the Long Game</h3>
+      <p>Great thinking! Historically, the S&P 500 has returned about 10% annually. If you invest $5,000 today and leave it for 30 years, it could grow to about $87,000. However, make sure you have an emergency fund first — investments can lose value short-term.</p>
+    </div>
+    <div class="scenario-outcome" id="outcome-debt">
+      <h3>Debt Destroyer</h3>
+      <p>Financially optimal! If you had $5,000 in credit card debt at 24% APR, you were paying about $1,200/year in interest alone. By eliminating this debt, you've given yourself an immediate 24% "return" — better than any investment. Dave Ramsey approves!</p>
+    </div>
+    <div class="scenario-outcome" id="outcome-spend">
+      <h3>Living in the Moment</h3>
+      <p>Life is short, and self-care matters! But consider this: that $5,000 vacation costs you not just $5,000, but the potential future value of that money. At 10% annual returns over 30 years, you're really spending $87,000 in future wealth. A balanced approach might be: save/invest $4,000 and use $1,000 for a treat.</p>
+    </div>
+  </div>
+
+  <!-- 16. Timed Challenge -->
+  <div class="panel" id="panel-timed">
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+    <div class="cat-label purple">Gamification</div>
+    <h2>Speed Round Challenge</h2>
+    <div id="timed-pre">
+      <p>Answer as many finance questions as you can in <strong>30 seconds</strong>!</p>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="btn btn-primary" onclick="startTimed()" style="padding:16px 40px; font-size:16px;">Start Challenge</button>
+      </div>
+    </div>
+    <div id="timed-game" style="display:none;">
+      <div class="timer-display">
+        <div class="timer-circle" id="timer-circle"><span id="timer-num">30</span></div>
+        <div class="timer-score">Score: <span id="timed-score">0</span></div>
+      </div>
+      <div class="timed-q" id="timed-question"></div>
+      <div class="timed-options" id="timed-opts"></div>
+    </div>
+    <div id="timed-result" style="display:none; text-align:center;">
+      <h3 style="color:#a855f7; font-size:20px; margin-bottom:12px;">Time's Up!</h3>
+      <p style="font-size:48px; font-weight:700; color:#fff; margin-bottom:8px;" id="timed-final">0</p>
+      <p style="color:#888; margin-bottom:24px;">questions answered correctly</p>
+      <button class="btn btn-primary" onclick="mark('timed'); closePanel()">Done</button>
+    </div>
+  </div>
+
+</div><!-- /overlay -->
+
+<script>
+  // ── State ──
+  const completed = new Set();
+  const TOTAL = 16;
+
+  // ── Hotspot positions ──
+  const hotspots = [
+    { id: 'info',        x: 0.04, y: 0.25, cat: 'content', n: 1 },
+    { id: 'gallery',     x: 0.16, y: 0.45, cat: 'content', n: 2 },
+    { id: 'video',       x: 0.17, y: 0.25, cat: 'content', n: 3 },
+    { id: 'audio',       x: 0.29, y: 0.45, cat: 'content', n: 4 },
+    { id: 'pdf',         x: 0.30, y: 0.25, cat: 'content', n: 5 },
+    { id: 'mcq',         x: 0.42, y: 0.45, cat: 'assess',  n: 6 },
+    { id: 'multiselect', x: 0.43, y: 0.25, cat: 'assess',  n: 7 },
+    { id: 'truefalse',   x: 0.55, y: 0.45, cat: 'assess',  n: 8 },
+    { id: 'dragdrop',    x: 0.56, y: 0.25, cat: 'assess',  n: 9 },
+    { id: 'fillin',      x: 0.68, y: 0.45, cat: 'assess',  n: 10 },
+    { id: 'likert',      x: 0.69, y: 0.25, cat: 'assess',  n: 11 },
+    { id: 'calc',        x: 0.78, y: 0.45, cat: 'tools',   n: 12 },
+    { id: 'timeline',    x: 0.79, y: 0.25, cat: 'tools',   n: 13 },
+    { id: 'flashcard',   x: 0.88, y: 0.45, cat: 'tools',   n: 14 },
+    { id: 'scenario',    x: 0.89, y: 0.25, cat: 'game',    n: 15 },
+    { id: 'timed',       x: 0.96, y: 0.45, cat: 'game',    n: 16 },
+  ];
+
+  const catClass = { content: 'cat-content', assess: 'cat-assess', tools: 'cat-tools', game: 'cat-game' };
+
+  // ── Create hotspots ──
+  const pano = document.getElementById('panorama');
+  hotspots.forEach(h => {
+    const dot = document.createElement('div');
+    dot.className = `hotspot ${catClass[h.cat]}`;
+    dot.id = `hs-${h.id}`;
+    dot.textContent = h.n;
+    dot.style.left = `${h.x * 100}%`;
+    dot.style.top = `${h.y * 100}%`;
+    dot.addEventListener('click', e => { e.stopPropagation(); openPanel(h.id); });
+    pano.appendChild(dot);
+  });
+
+  // ── Drag to pan ──
+  let isDragging = false, startX = 0, scrollLeft = 0;
+  const panoImg = pano.querySelector('img');
+
+  pano.addEventListener('mousedown', e => {
+    isDragging = true;
+    pano.classList.add('dragging');
+    startX = e.pageX;
+    scrollLeft = parseInt(pano.style.left || '0');
+  });
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.pageX - startX;
+    pano.style.left = scrollLeft + dx + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    pano.classList.remove('dragging');
+  });
+
+  // Touch support
+  pano.addEventListener('touchstart', e => {
+    isDragging = true;
+    startX = e.touches[0].pageX;
+    scrollLeft = parseInt(pano.style.left || '0');
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const dx = e.touches[0].pageX - startX;
+    pano.style.left = scrollLeft + dx + 'px';
+  }, { passive: true });
+  document.addEventListener('touchend', () => { isDragging = false; });
+
+  // ── Panel open/close ──
+  const overlay = document.getElementById('overlay');
+
+  function openPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById(`panel-${id}`);
+    if (panel) {
+      panel.classList.add('active');
+      overlay.classList.add('active');
+      if (id === 'video') document.getElementById('video-iframe').src = 'https://www.youtube.com/embed/p7HKvqRI_Bo';
+      if (id === 'pdf') document.getElementById('pdf-iframe').src = 'https://www.irs.gov/pub/irs-pdf/fw4.pdf';
+      if (id === 'gallery') renderGallery(0);
+      if (id === 'calc') calculate();
+    }
+  }
+
+  function closePanel() {
+    overlay.classList.remove('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('video-iframe').src = '';
+    document.getElementById('pdf-iframe').src = '';
+    stopAudioSim();
+  }
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closePanel(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+  // ── Mark complete ──
+  function mark(id) {
+    if (completed.has(id)) return;
+    completed.add(id);
+    const hs = document.getElementById(`hs-${id}`);
+    if (hs) hs.classList.add('completed');
+    updateHUD();
+  }
+
+  function updateHUD() {
+    const n = completed.size;
+    document.getElementById('hud-count').textContent = `${n} / ${TOTAL}`;
+    document.getElementById('hud-fill').style.width = `${(n / TOTAL) * 100}%`;
+  }
+
+  // ── MCQ ──
+  function checkMCQ(btn, correct) {
+    const opts = document.querySelectorAll('#mcq-options .option-btn');
+    opts.forEach(o => { o.classList.add('disabled'); });
+    if (correct) {
+      btn.classList.add('correct');
+      document.getElementById('mcq-correct').classList.add('show');
+    } else {
+      btn.classList.add('wrong');
+      opts.forEach(o => { if (o.getAttribute('onclick').includes('true')) o.classList.add('correct'); });
+      document.getElementById('mcq-wrong').classList.add('show');
+    }
+    mark('mcq');
+  }
+
+  // ── Multi-select ──
+  function checkMultiSelect() {
+    const checks = document.querySelectorAll('#ms-items input[type="checkbox"]');
+    let allCorrect = true;
+    checks.forEach(c => {
+      const isCorrect = c.dataset.correct === 'true';
+      if (c.checked !== isCorrect) allCorrect = false;
+    });
+    document.getElementById(allCorrect ? 'ms-correct' : 'ms-wrong').classList.add('show');
+    document.getElementById('ms-submit').disabled = true;
+    mark('multiselect');
+  }
+
+  // ── True/False ──
+  function selectTF(btn, value) {
+    const row = btn.closest('.tf-btns');
+    row.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    btn.dataset.selected = value;
+  }
+
+  function checkTF() {
+    const rows = document.querySelectorAll('#tf-items .tf-row');
+    let score = 0;
+    rows.forEach(row => {
+      const answer = row.dataset.answer;
+      const btns = row.querySelectorAll('.tf-btn');
+      const selected = row.querySelector('.tf-btn.selected');
+      btns.forEach(b => b.style.pointerEvents = 'none');
+      if (selected && selected.dataset.selected === answer) {
+        selected.classList.add('correct-answer');
+        score++;
+      } else if (selected) {
+        selected.classList.add('wrong-answer');
+        btns.forEach(b => { if (b.textContent.toLowerCase() === answer) b.classList.add('correct-answer'); });
+      }
+    });
+    const fb = document.getElementById('tf-feedback');
+    fb.textContent = `You got ${score} out of ${rows.length} correct!`;
+    fb.className = `feedback show ${score === rows.length ? 'correct' : 'wrong'}`;
+    document.getElementById('tf-submit').disabled = true;
+    mark('truefalse');
+  }
+
+  // ── Drag & Drop ──
+  let draggedTerm = null;
+
+  document.querySelectorAll('.dd-term').forEach(term => {
+    term.addEventListener('dragstart', e => {
+      draggedTerm = term;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => term.style.opacity = '0.4', 0);
+    });
+    term.addEventListener('dragend', () => { term.style.opacity = '1'; });
+  });
+
+  document.querySelectorAll('.dd-def').forEach(def => {
+    def.addEventListener('dragover', e => { e.preventDefault(); def.classList.add('over'); });
+    def.addEventListener('dragleave', () => def.classList.remove('over'));
+    def.addEventListener('drop', e => {
+      e.preventDefault();
+      def.classList.remove('over');
+      if (!draggedTerm) return;
+      const termId = draggedTerm.dataset.term;
+      const accept = def.dataset.accept;
+      if (termId === accept) {
+        def.classList.add('correct-drop');
+        const clone = draggedTerm.cloneNode(true);
+        clone.draggable = false;
+        clone.style.cursor = 'default';
+        def.appendChild(clone);
+        draggedTerm.classList.add('placed');
+      } else {
+        def.classList.add('wrong-drop');
+        setTimeout(() => def.classList.remove('wrong-drop'), 800);
+      }
+      checkDDComplete();
+    });
+  });
+
+  function checkDDComplete() {
+    const defs = document.querySelectorAll('.dd-def.correct-drop');
+    if (defs.length === 4) {
+      const fb = document.getElementById('dd-feedback');
+      fb.textContent = 'All matched correctly! Great job!';
+      fb.className = 'feedback show correct';
+      mark('dragdrop');
+    }
+  }
+
+  // ── Fill in the Blank ──
+  function checkFillIn() {
+    const inputs = [
+      { el: document.getElementById('fi-1'), answer: 'P' },
+      { el: document.getElementById('fi-2'), answer: 'r' },
+      { el: document.getElementById('fi-3'), answer: 'n' },
+    ];
+    let score = 0;
+    inputs.forEach(i => {
+      const val = i.el.value.trim().toUpperCase();
+      const ans = i.answer.toUpperCase();
+      if (val === ans) {
+        i.el.classList.add('correct-input');
+        score++;
+      } else {
+        i.el.classList.add('wrong-input');
+      }
+    });
+    const fb = document.getElementById('fi-feedback');
+    fb.textContent = score === 3 ? 'All correct! A = P(1 + r/n)^(nt)' : `${score}/3 correct. Remember: A = P(1 + r/n)^(nt)`;
+    fb.className = `feedback show ${score === 3 ? 'correct' : 'wrong'}`;
+    mark('fillin');
+  }
+
+  // ── Likert ──
+  (function initLikert() {
+    document.querySelectorAll('.likert-q .star-row').forEach(row => {
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement('span');
+        star.className = 'star';
+        star.textContent = '\u2605';
+        star.dataset.value = i;
+        star.addEventListener('click', function() {
+          const siblings = this.parentElement.querySelectorAll('.star');
+          siblings.forEach((s, idx) => {
+            s.classList.toggle('filled', idx < i);
+          });
+          this.parentElement.dataset.rating = i;
+        });
+        row.appendChild(star);
+      }
+    });
+  })();
+
+  function submitLikert() {
+    const rows = document.querySelectorAll('.likert-q .star-row');
+    let allRated = true;
+    rows.forEach(r => { if (!r.dataset.rating) allRated = false; });
+    const fb = document.getElementById('likert-feedback');
+    if (!allRated) {
+      fb.textContent = 'Please rate all 5 questions before submitting.';
+      fb.className = 'feedback show wrong';
+      return;
+    }
+    fb.textContent = 'Thank you! Your responses have been recorded.';
+    fb.className = 'feedback show correct';
+    document.getElementById('likert-submit').disabled = true;
+    mark('likert');
+  }
+
+  // ── Calculator ──
+  function calculate() {
+    const P = parseFloat(document.getElementById('calc-principal').value) || 0;
+    const r = (parseFloat(document.getElementById('calc-rate').value) || 0) / 100;
+    const t = parseFloat(document.getElementById('calc-years').value) || 0;
+    const n = parseFloat(document.getElementById('calc-n').value) || 1;
+    const A = P * Math.pow(1 + r / n, n * t);
+    document.getElementById('calc-amount').textContent = '$' + A.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('calc-interest').textContent = 'Interest earned: $' + (A - P).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ── Gallery ──
+  let galleryIdx = 0;
+  const galleryItems = [
+    { title: 'Income Statement', bars: [
+      { label: 'Revenue', val: 85, color: '#22c55e' },
+      { label: 'Expenses', val: 60, color: '#ef4444' },
+      { label: 'Net Income', val: 25, color: '#2997ff' }
+    ]},
+    { title: 'Balance Sheet', bars: [
+      { label: 'Assets', val: 90, color: '#00d4aa' },
+      { label: 'Liabilities', val: 55, color: '#ff6b6b' },
+      { label: 'Equity', val: 35, color: '#ffcc00' }
+    ]},
+    { title: 'Cash Flow', bars: [
+      { label: 'Operating', val: 70, color: '#2997ff' },
+      { label: 'Investing', val: -30, color: '#a855f7' },
+      { label: 'Financing', val: -15, color: '#ff6b6b' }
+    ]}
+  ];
+
+  function renderGallery(idx) {
+    galleryIdx = idx;
+    const item = galleryItems[idx];
+    const svg = document.getElementById('gallery-svg');
+    const maxVal = 100;
+    let html = '';
+    item.bars.forEach((b, i) => {
+      const w = Math.abs(b.val) / maxVal * 300;
+      const y = 20 + i * 60;
+      html += `<text x="10" y="${y + 18}" fill="#999" font-size="12" font-family="Segoe UI, sans-serif">${b.label}</text>`;
+      html += `<rect x="90" y="${y}" width="${w}" height="30" rx="6" fill="${b.color}" opacity="0.8"/>`;
+      html += `<text x="${95 + w}" y="${y + 20}" fill="#ccc" font-size="13" font-family="Segoe UI, sans-serif">${b.val > 0 ? '' : ''}${b.val}%</text>`;
+    });
+    svg.innerHTML = html;
+    document.getElementById('gallery-caption').textContent = item.title;
+    // dots
+    const dots = document.getElementById('gallery-dots');
+    dots.innerHTML = galleryItems.map((_, i) => `<div class="gallery-dot ${i === idx ? 'active' : ''}"></div>`).join('');
+  }
+
+  function galleryNav(dir) {
+    let next = galleryIdx + dir;
+    if (next < 0) next = galleryItems.length - 1;
+    if (next >= galleryItems.length) next = 0;
+    renderGallery(next);
+  }
+
+  // ── Audio Simulation ──
+  let audioPlaying = false, audioTimer = null, audioProgress = 0;
+  const audioDuration = 90; // 1:30
+
+  function toggleAudio() {
+    if (audioPlaying) {
+      stopAudioSim();
+    } else {
+      audioPlaying = true;
+      document.getElementById('audio-play').innerHTML = '&#10074;&#10074;';
+      audioTimer = setInterval(() => {
+        audioProgress += 0.5;
+        if (audioProgress >= audioDuration) {
+          stopAudioSim();
+          audioProgress = audioDuration;
+        }
+        const pct = (audioProgress / audioDuration) * 100;
+        document.getElementById('audio-fill').style.width = pct + '%';
+        const m = Math.floor(audioProgress / 60);
+        const s = Math.floor(audioProgress % 60);
+        document.getElementById('audio-cur').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      }, 500);
+    }
+  }
+
+  function stopAudioSim() {
+    audioPlaying = false;
+    clearInterval(audioTimer);
+    const btn = document.getElementById('audio-play');
+    if (btn) btn.innerHTML = '&#9654;';
+  }
+
+  function seekAudio(e) {
+    const bar = document.getElementById('audio-bar');
+    const rect = bar.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audioProgress = pct * audioDuration;
+    document.getElementById('audio-fill').style.width = (pct * 100) + '%';
+    const m = Math.floor(audioProgress / 60);
+    const s = Math.floor(audioProgress % 60);
+    document.getElementById('audio-cur').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  // ── Timeline ──
+  (function initTimeline() {
+    const events = [
+      { year: '1690', desc: 'Massachusetts Bay Colony issues first paper money in America' },
+      { year: '1792', desc: 'Coinage Act establishes the U.S. Mint and the dollar' },
+      { year: '1861', desc: 'First U.S. paper currency ("Greenbacks") issued during Civil War' },
+      { year: '1913', desc: 'Federal Reserve Act creates the central banking system' },
+      { year: '1933', desc: 'FDR takes U.S. off the gold standard domestically' },
+      { year: '1971', desc: 'Nixon ends dollar convertibility to gold (Bretton Woods collapses)' },
+      { year: '2009', desc: 'Bitcoin launches — first decentralized cryptocurrency' },
+      { year: '2020', desc: 'Fed prints ~$3 trillion in response to COVID-19 pandemic' },
+    ];
+    const container = document.getElementById('timeline-inner');
+    events.forEach(ev => {
+      const node = document.createElement('div');
+      node.className = 'tl-node';
+      node.innerHTML = `<div class="tl-dot"></div><div class="tl-year">${ev.year}</div><div class="tl-desc">${ev.desc}</div>`;
+      container.appendChild(node);
+    });
+  })();
+
+  // ── Flashcards ──
+  let fcIdx = 0;
+  const fcCards = [
+    { word: 'Amortization', def: 'The process of spreading loan payments over time, with each payment covering both principal and interest.' },
+    { word: 'Diversification', def: 'An investment strategy that spreads risk by allocating funds across different asset classes, industries, or geographies.' },
+    { word: 'Liquidity', def: 'How quickly and easily an asset can be converted to cash without significant loss in value.' },
+    { word: 'Yield', def: 'The income return on an investment, expressed as a percentage of the investment\'s cost or current market value.' },
+    { word: 'Collateral', def: 'An asset pledged by a borrower to secure a loan. If the borrower defaults, the lender can seize the collateral.' },
+    { word: 'Inflation', def: 'The rate at which the general level of prices for goods and services rises, reducing purchasing power over time.' },
+  ];
+
+  function renderFC() {
+    const card = fcCards[fcIdx];
+    document.getElementById('fc-word').textContent = card.word;
+    document.getElementById('fc-def').textContent = card.def;
+    document.getElementById('fc-counter').textContent = `${fcIdx + 1} / ${fcCards.length}`;
+    document.getElementById('flashcard').classList.remove('flipped');
+  }
+
+  function flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); }
+
+  function fcNav(dir) {
+    fcIdx += dir;
+    if (fcIdx < 0) fcIdx = fcCards.length - 1;
+    if (fcIdx >= fcCards.length) fcIdx = 0;
+    renderFC();
+  }
+
+  renderFC();
+
+  // ── Scenario ──
+  function chooseScenario(choice) {
+    document.getElementById('scenario-choices').style.display = 'none';
+    document.querySelectorAll('.scenario-outcome').forEach(o => o.classList.remove('show'));
+    document.getElementById(`outcome-${choice}`).classList.add('show');
+    mark('scenario');
+  }
+
+  // ── Timed Challenge ──
+  let timedInterval = null, timedTime = 30, timedScore = 0, timedQIdx = 0;
+  const timedQs = [
+    { q: 'What does APR stand for?', opts: ['Annual Percentage Rate', 'Annual Prime Rate', 'Adjusted Payment Ratio'], ans: 0 },
+    { q: 'What is the max FDIC insurance per depositor?', opts: ['$100,000', '$250,000', '$500,000'], ans: 1 },
+    { q: 'Which type of account typically earns the most interest?', opts: ['Checking', 'Savings', 'Certificate of Deposit'], ans: 2 },
+    { q: 'What is a bear market?', opts: ['Prices rising 20%+', 'Prices falling 20%+', 'Flat market'], ans: 1 },
+    { q: 'What does IRA stand for?', opts: ['Individual Retirement Account', 'Internal Revenue Allocation', 'Investment Return Average'], ans: 0 },
+    { q: 'Who sets the federal funds rate?', opts: ['Congress', 'The President', 'The Federal Reserve'], ans: 2 },
+    { q: 'What is dollar-cost averaging?', opts: ['Buying all at once', 'Investing fixed amounts at regular intervals', 'Only buying when prices drop'], ans: 1 },
+    { q: 'What percentage is the standard long-term capital gains rate for most people?', opts: ['10%', '15%', '25%'], ans: 1 },
+  ];
+
+  function startTimed() {
+    document.getElementById('timed-pre').style.display = 'none';
+    document.getElementById('timed-game').style.display = 'block';
+    timedTime = 30; timedScore = 0; timedQIdx = 0;
+    showTimedQ();
+    timedInterval = setInterval(() => {
+      timedTime--;
+      document.getElementById('timer-num').textContent = timedTime;
+      if (timedTime <= 5) document.getElementById('timer-circle').classList.add('urgent');
+      if (timedTime <= 0) endTimed();
+    }, 1000);
+  }
+
+  function showTimedQ() {
+    if (timedQIdx >= timedQs.length) timedQIdx = 0; // loop
+    const q = timedQs[timedQIdx];
+    document.getElementById('timed-question').textContent = q.q;
+    const optsDiv = document.getElementById('timed-opts');
+    optsDiv.innerHTML = q.opts.map((o, i) =>
+      `<button class="option-btn" onclick="answerTimed(${i}, ${q.ans})">${o}</button>`
+    ).join('');
+  }
+
+  function answerTimed(selected, correct) {
+    if (selected === correct) timedScore++;
+    document.getElementById('timed-score').textContent = timedScore;
+    timedQIdx++;
+    showTimedQ();
+  }
+
+  function endTimed() {
+    clearInterval(timedInterval);
+    document.getElementById('timed-game').style.display = 'none';
+    document.getElementById('timed-result').style.display = 'block';
+    document.getElementById('timed-final').textContent = timedScore;
+    mark('timed');
+  }
+
+  // ── Init ──
+  updateHUD();
+</script>
+</body>
+</html>
